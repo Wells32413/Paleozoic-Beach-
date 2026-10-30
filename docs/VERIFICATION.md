@@ -34,3 +34,7 @@ This work was authored in a Linux workspace without Unity, dotnet, csc or mcs. A
 No finished visual assets, sophisticated ecology, video, scanning, objective selection, equipment/upgrades, 3D park placement, visitors/staff, audio or quality presets. Facility and park are functional interfaces. No active-mission resume; quitting discards observations and keeps paid expedition costs. No production save migration or simultaneous save access. Unproductive paid missions can exhaust funding before an exhibit exists. No precise location/stratigraphy or photorealistic/anatomically approved models. Realistic graphics are a project direction, not an achieved milestone.
 
 Target repository: https://github.com/Wells32413/Paleozoic-Beach- . Publication is performed via the connected GitHub tools because this environment’s CLI authentication is unavailable.
+
+## iPhone preparation follow-up
+
+Added an iOS Xcode export command and Mac wrapper with a Unity test-report gate; safe-area layout fitting; independent held-control contributions; visible pause/resume with focus-loss input reset; centered crosshair; and a Resources-bundled mobile shader to avoid runtime-only shader lookup being stripped from builds. Python test-report gate tests pass locally; no Unity or Apple build was performed. See IPHONE.md for installation prerequisites.

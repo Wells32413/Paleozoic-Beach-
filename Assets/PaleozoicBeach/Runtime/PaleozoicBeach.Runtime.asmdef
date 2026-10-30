@@ -1,1 +1,7 @@
-{"name":"PaleozoicBeach.Runtime","references":["PaleozoicBeach.Core"]}
+{
+  "name": "PaleozoicBeach.Runtime",
+  "references": [
+    "PaleozoicBeach.Core",
+    "UnityEngine.UI"
+  ]
+}

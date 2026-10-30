@@ -40,4 +40,6 @@ Run `python3 tools/check_project.py` for repository consistency checks. These do
 
 For iOS, switch Build Profiles to iOS, build Xcode output, then sign and run from a compatible macOS/Xcode host. Provisioning, team identifier, minimum OS and device tiers must be chosen and validated. For Android, select IL2CPP/ARM64, set API levels, create signing credentials outside version control, and test an AAB. No platform build has been executed here.
 
-No third-party art, sound, textures or fonts are bundled. Built-in Unity primitives, Standard shader, and LegacyRuntime font are used. Photorealistic art, natural rigged animation, detailed cockpit, audio, particles, water surface and scalable quality presets are still required. See [roadmap](docs/ROADMAP.md).
+No third-party art, sound, textures or fonts are bundled. Built-in Unity primitives, a bundled simple mobile underwater shader, and LegacyRuntime font are used. Photorealistic art, natural rigged animation, detailed cockpit, audio, particles, water surface and scalable quality presets are still required. See [roadmap](docs/ROADMAP.md).
+
+For native installation requirements and the automated Xcode export, see [iPhone delivery](docs/IPHONE.md). The project now includes safe-area fitting and revised multitouch/pause handling, all pending Unity/device verification.

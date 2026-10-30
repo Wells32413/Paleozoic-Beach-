@@ -17,7 +17,8 @@ namespace PaleozoicBeach.Runtime
         private GameObject world;
         private Transform submarine, animal;
         private Camera view;
-        private Text status;
+        private Text status, pauseLabel;
+        private readonly System.Collections.Generic.Dictionary<int, Vector4> touchAxes = new System.Collections.Generic.Dictionary<int, Vector4>();
         private RectTransform panel;
         private string page = "Menu", notice = "";
         private float forward, turn, vertical, pitch, photoCooldown, swimTime;
@@ -45,6 +46,7 @@ namespace PaleozoicBeach.Runtime
             panel = new GameObject("Content", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
             panel.SetParent(canvas.transform,false); panel.anchorMin = Vector2.zero; panel.anchorMax = Vector2.one; panel.offsetMin = new Vector2(30,20); panel.offsetMax = new Vector2(-30,-20);
             panel.GetComponent<Image>().color = new Color(.02f,.06f,.09f,.65f);
+            canvas.AddComponent<PhoneLayout>().content = panel;
             Show("Menu");
         }
         private Progress Load()
@@ -79,7 +81,7 @@ namespace PaleozoicBeach.Runtime
         {
             var obj = new GameObject("Label",typeof(RectTransform),typeof(Text)); obj.transform.SetParent(panel,false);
             var rt = obj.GetComponent<RectTransform>(); rt.anchorMin = rt.anchorMax = new Vector2(0,1); rt.pivot = new Vector2(0,1); rt.anchoredPosition = position; rt.sizeDelta = size;
-            var text = obj.GetComponent<Text>(); text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); text.text = value; text.fontSize = fontSize; text.color = Color.white; return text;
+            var text = obj.GetComponent<Text>(); text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); text.text = value; text.fontSize = fontSize; text.color = Color.white; text.raycastTarget = false; return text;
         }
         private GameObject Button(string title, Vector2 pos, Action click)
         {
@@ -89,15 +91,32 @@ namespace PaleozoicBeach.Runtime
             var text = Label(title, Vector2.zero,new Vector2(260,50),20); text.transform.SetParent(obj.transform,false); text.alignment = TextAnchor.MiddleCenter;
             return obj;
         }
-        private void Hold(string title, Vector2 pos, Action<float> setter, float value)
+        private void Hold(string title, Vector2 pos, Vector4 axes)
         {
             var obj = Button(title,pos,()=>{}); var trigger = obj.AddComponent<EventTrigger>();
-            Add(EventTriggerType.PointerDown,()=>setter(value)); Add(EventTriggerType.PointerUp,()=>setter(0)); Add(EventTriggerType.PointerExit,()=>setter(0));
+            int key = obj.GetInstanceID();
+            Add(EventTriggerType.PointerDown,()=>{ if (!paused) touchAxes[key] = axes; RecomputeTouch(); });
+            Add(EventTriggerType.PointerUp,()=>{ touchAxes.Remove(key); RecomputeTouch(); });
+            Add(EventTriggerType.PointerExit,()=>{ touchAxes.Remove(key); RecomputeTouch(); });
             void Add(EventTriggerType type, Action action) { var entry = new EventTrigger.Entry { eventID = type }; entry.callback.AddListener(_=>action()); trigger.triggers.Add(entry); }
+        }
+        private void RecomputeTouch()
+        {
+            Vector4 total = Vector4.zero;
+            foreach (var axes in touchAxes.Values) total += axes;
+            forward = Mathf.Clamp(total.x,-1,1); turn = Mathf.Clamp(total.y,-1,1);
+            vertical = Mathf.Clamp(total.z,-1,1); pitch = Mathf.Clamp(total.w,-1,1);
+        }
+        private void ClearTouch() { touchAxes.Clear(); RecomputeTouch(); }
+        private void TogglePause()
+        {
+            paused = !paused; ClearTouch();
+            if (pauseLabel != null) pauseLabel.text = paused ? "Resume expedition" : "Pause";
+            if (paused && status != null) status.text = "EXPEDITION PAUSED\nTap Resume expedition to continue. Your return timer is stopped.";
         }
         private void Show(string next)
         {
-            page = next; forward = turn = vertical = pitch = 0;
+            page = next; ClearTouch();
             foreach (Transform child in panel) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             panel.GetComponent<Image>().color = new Color(.02f,.06f,.09f,page == "Dive" ? .05f : .94f);
             Label("PALEOZOIC BEACH  /  " + page.ToUpperInvariant(),new Vector2(20,-12),new Vector2(1100,50),32);
@@ -131,13 +150,16 @@ namespace PaleozoicBeach.Runtime
             }
             if (page == "Dive")
             {
-                Hold("Forward",new Vector2(20,-440),v=>forward=v,1); Hold("Reverse",new Vector2(20,-500),v=>forward=v,-1);
-                Hold("Turn left",new Vector2(300,-440),v=>turn=v,-1); Hold("Turn right",new Vector2(300,-500),v=>turn=v,1);
-                Hold("Ascend",new Vector2(580,-440),v=>vertical=v,1); Hold("Descend",new Vector2(580,-500),v=>vertical=v,-1);
-                Hold("Look up",new Vector2(860,-440),v=>pitch=v,-1); Hold("Look down",new Vector2(860,-500),v=>pitch=v,1);
+                Hold("Forward",new Vector2(20,-440),new Vector4(1,0,0,0)); Hold("Reverse",new Vector2(20,-500),new Vector4(-1,0,0,0));
+                Hold("Turn left",new Vector2(300,-440),new Vector4(0,-1,0,0)); Hold("Turn right",new Vector2(300,-500),new Vector4(0,1,0,0));
+                Hold("Ascend",new Vector2(580,-440),new Vector4(0,0,1,0)); Hold("Descend",new Vector2(580,-500),new Vector4(0,0,-1,0));
+                Hold("Look up",new Vector2(860,-440),new Vector4(0,0,0,-1)); Hold("Look down",new Vector2(860,-500),new Vector4(0,0,0,1));
                 Button("Photograph",new Vector2(860,-360),Photograph);
-                Button("Pause",new Vector2(860,-570),()=>{ paused = !paused; forward=turn=vertical=pitch=0; });
-                Label("+",new Vector2(575,-300),new Vector2(50,50),32);
+                pauseLabel = Button("Pause",new Vector2(860,-570),TogglePause).GetComponentInChildren<Text>();
+                var crosshair = Label("+",Vector2.zero,new Vector2(50,50),32);
+                var crosshairRect = crosshair.rectTransform;
+                crosshairRect.anchorMin = crosshairRect.anchorMax = new Vector2(.5f,.5f);
+                crosshairRect.pivot = new Vector2(.5f,.5f); crosshair.alignment = TextAnchor.MiddleCenter;
             }
         }
         private void Launch()
@@ -150,7 +172,7 @@ namespace PaleozoicBeach.Runtime
         private GameObject Primitive(string name, PrimitiveType shape, Vector3 position, Vector3 scale, Color color, Transform parent)
         {
             var obj = GameObject.CreatePrimitive(shape); obj.name = name; obj.transform.SetParent(parent,false); obj.transform.localPosition = position; obj.transform.localScale = scale;
-            var material = new Material(Shader.Find("Standard")); material.color = color; material.SetFloat("_Glossiness",.15f); obj.GetComponent<Renderer>().material = material;
+            var material = new Material(Resources.Load<Shader>("MobileUnderwater")); material.color = color; obj.GetComponent<Renderer>().material = material;
             return obj;
         }
         private void BuildWorld()
@@ -214,7 +236,13 @@ namespace PaleozoicBeach.Runtime
                 expedition.Settle(progress); Save(); view.transform.SetParent(null); Destroy(world); RenderSettings.fog = false; Show("Results");
             }
         }
-        private void OnApplicationPause(bool value) { if (value) { paused = true; forward=turn=vertical=pitch=0; Save(); } }
+        private void OnApplicationPause(bool value)
+        {
+            if (!value) return;
+            if (page == "Dive" && !paused) TogglePause(); else ClearTouch();
+            Save();
+        }
+        private void OnApplicationFocus(bool focus) { if (!focus) OnApplicationPause(true); }
         private void OnApplicationQuit() { Save(); }
     }
 }
